@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build (release)
+        run: cargo build --release
+
+      # Every fully ticked milestone in ROADMAP.md must pass its tests.
+      - name: Roadmap check
+        run: python3 scripts/check.py
+
+      - name: Format
+        if: always()
+        run: cargo fmt --check
+
+      # Advisory: shows warnings without failing the run.
+      - name: Clippy
+        if: always()
+        continue-on-error: true
+        run: cargo clippy --lib --bins
+
+      # Run the renderer. Nothing on stdout (before M0) just means no image yet.
+      - name: Render
+        run: |
+          start=$(date +%s.%N)
+          ./target/release/illuminator > out.ppm || true
+          end=$(date +%s.%N)
+          if [ -s out.ppm ]; then
+            python3 scripts/ppm2png.py out.ppm out.png
+            secs=$(python3 -c "print(round($end - $start, 2))")
+            echo "**Render time:** ${secs}s" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload render
+        if: hashFiles('out.png') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: render
+          path: out.png

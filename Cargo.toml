@@ -1,0 +1,14 @@
+[package]
+name = "illuminator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Add crates as the roadmap asks for them (rayon at M8, tobj at M9, ...).
+
+# Ray tracing in an unoptimised build is painfully slow, so optimise dev/test too.
+[profile.dev]
+opt-level = 2
+
+[profile.test]
+opt-level = 2
